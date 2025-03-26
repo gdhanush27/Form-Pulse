@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict
 from pydantic import BaseModel
 import os
-path_to_credentials = os.path.join(os.getcwd(), "dynamic-form-270-firebase-adminsdk-fbsvc-fdeefdede0.json")
+path_to_credentials = os.path.join(os.getcwd(), "dynamic-form-270-firebase-adminsdk-fbsvc-efae9b4231.json")
 cred = credentials.Certificate(path_to_credentials)
 firebase_admin.initialize_app(cred)
 
