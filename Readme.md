@@ -1,6 +1,6 @@
 # Form Pulse 📋✨
 
-**Smart Form Builder with Real-Time Insights**
+**Smart Form Builder with Real-Time Analytics**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-green.svg)](https://www.python.org/)
@@ -8,22 +8,34 @@
 
 Form Pulse is a modern form-building platform that combines intuitive form creation with powerful analytics. Built for educators, researchers, and businesses needing smart data collection solutions.
 
+![Form Pulse Dashboard](https://via.placeholder.com/800x400.png?text=FormPulse+Dashboard+Preview) <!-- Replace with actual screenshot -->
+
 ## Features 🚀
 
-- **📝 Smart Form Builder**  
-  Create forms with multiple question types and automatic scoring
-- **🔗 Shareable Links**  
-  Generate unique URLs with one-click copy functionality
-- **📊 Real-Time Analytics**  
-  Visualize submissions with interactive charts and metrics
-- **🔒 Secure Authentication**  
-  Google OAuth integration with Firebase
-- **📥 Excel Export**  
-  Download submissions as formatted spreadsheets
-- **👩💻 Admin Dashboard**  
-  Manage forms and view detailed submission insights
-- **📱 Responsive Design**  
-  Works flawlessly on all devices
+- **🎨 Dual Form Creation Modes**
+  - GUI builder for MCQ forms (drag-and-drop coming soon)
+  - JSON upload for advanced users
+  - Instant toggle between modes
+
+- **🏆 Automated Scoring & Leaderboards**
+  - Real-time scoring for MCQ forms
+  - Top 5/10 performers leaderboard
+  - Percentage calculated against total possible marks
+
+- **📊 Comprehensive Analytics**
+  - Submission tracking with timestamps
+  - Visual performance metrics
+  - Excel export with one click
+
+- **🔗 Smart Sharing**
+  - Copy form links with single click
+  - Responsive forms work on any device
+  - Secure access controls
+
+- **👤 User-Centric Design**
+  - Submission history dashboard
+  - Google profile integration
+  - Mobile-responsive interface
 
 ## Installation ⚙️
 
@@ -31,8 +43,8 @@ Form Pulse is a modern form-building platform that combines intuitive form creat
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/formpulse.git
-cd formpulse/backend
+git clone https://github.com/gdhanush27/Form-Pulse.git
+cd Form-Pulse/server
 
 # Create virtual environment
 python -m venv venv
@@ -58,65 +70,58 @@ npm install
 npm start
 ```
 
-## Usage 🖥️
+## Usage Guide 🖥️
 
-1. **Access the App**  
-   Visit `http://localhost:3000` in your browser
+### Creating Forms
+1. **GUI Mode**:
+   - Add questions and options visually
+   - Set correct answers and marks
+   - Preview form before publishing
 
-2. **Create Forms**  
-   - Click "Create New Form" in the Admin Dashboard
-   - Upload JSON form template 
+2. **JSON Mode**:
+   ```json
+   {
+     "questions": [
+       {
+         "question": "Sample question",
+         "options": ["Option 1", "Option 2"],
+         "correct_answer": "Option 1",
+         "marks": 1
+       }
+     ]
+   }
+   ```
 
-3. **Share Forms**  
-   - Copy unique form link from Admin Dashboard
-   - Distribute to respondents
-
-4. **Submit Responses**  
-   - Users can submit via shared links
-   - Real-time validation and scoring
-
-5. **Analyze Data**  
-   - View submissions in Admin Dashboard
-   - Export data to Excel with one click
-
-## Tech Stack 🛠️
-
-**Backend**  
-- FastAPI (Python)
-- MongoDB (Database)
-- PyMongo (ODM)
-- Pandas (Data Export)
-
-**Frontend**  
-- React 18
-- Material-UI (Design System)
-- Axios (API Client)
-- Firebase (Authentication)
-
-**DevOps**  
-- Docker (Containerization)
-- Nginx (Reverse Proxy)
-- GitHub Actions (CI/CD)
+### Managing Submissions
+- View real-time leaderboards
+- Export data to Excel
+- Track respondent performance
+- Copy shareable form links
 
 ## API Reference 📚
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/upload/` | POST | Create new form |
+| `/create-form` | POST | Create form (GUI or JSON) |
 | `/form/{name}` | GET | Get form template |
-| `/submit` | POST | Submit form responses |
-| `/submissions/{name}/export` | GET | Export submissions as Excel |
+| `/submissions/{name}` | GET | Get form submissions |
+| `/submissions/{name}/export` | GET | Export to Excel |
 | `/my-forms` | GET | List user's forms |
+| `/my-submissions` | GET | List user's responses |
 
-## Contributing 🤝
+## Tech Stack 🛠️
 
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open pull request
+**Backend**  
+- FastAPI (Python) - High-performance API framework
+- MongoDB - Flexible NoSQL database
+- PyMongo - MongoDB Python driver
+- Pandas - Data analysis and Excel export
 
-Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
+**Frontend**  
+- React 18 - Component-based UI
+- Material-UI - Modern design system
+- Firebase Auth - Secure authentication
+---
 
 ## License 📄
 
@@ -126,3 +131,5 @@ This project is licensed under the GNU GENERAL PUBLIC LICENSE - see [LICENSE](LI
 
 **Form Pulse** © 2025 - Crafted with ❤️ by Dhanush  
 [Report Bug](https://github.com/gdhanush27/Form-Pulse/issues) | [Request Feature](https://github.com/gdhanush27/Form-Pulse/issues)
+
+---
