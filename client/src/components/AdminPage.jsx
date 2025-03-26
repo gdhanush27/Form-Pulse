@@ -98,7 +98,7 @@ const AdminPage = () => {
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 4, p: 2 }}>
       <Typography variant="h4" gutterBottom sx={{ mb: 4 }}>
-        My Forms
+        Forms Created
       </Typography>
       
       {forms.length === 0 ? (

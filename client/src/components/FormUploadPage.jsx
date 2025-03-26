@@ -59,7 +59,7 @@ const FormUploadPage = () => {
     formData.append('form_name', formName);
 
     try {
-      const response = await axios.post('http://localhost:8000/upload/', formData, {
+      const response = await axios.post('http://localhost:8000/upload-form', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${await user.getIdToken()}`

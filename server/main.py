@@ -44,6 +44,18 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
 # Models
 # Updated FormDefinition model
+
+class QuestionCreate(BaseModel):
+    question: str
+    options: List[str]
+    correct_answer: str
+    marks: float
+
+class FormCreateRequest(BaseModel):
+    form_name: str
+    questions: List[QuestionCreate]
+    
+    
 class Question(BaseModel):
     question: str
     options: List[str]
@@ -73,7 +85,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/upload/")
+@app.post("/upload-form")
 async def upload_form(
     file: UploadFile = File(...),
     form_name: str = Form(...),
@@ -112,6 +124,37 @@ async def upload_form(
     except DuplicateKeyError:
         raise HTTPException(400, "Form name already exists")
 
+
+@app.post("/create-form")
+async def create_form(form_data: FormCreateRequest, user: dict = Depends(get_current_user)):
+    try:
+        # Convert to same format as JSON upload
+        formatted_questions = []
+        for q in form_data.questions:
+            if q.correct_answer not in q.options:
+                raise HTTPException(400, "Correct answer must be in options")
+                
+            formatted_questions.append({
+                "question": q.question,
+                "options": q.options,
+                "correct_answer": q.correct_answer,
+                "marks": q.marks
+            })
+        
+        # Same logic as JSON upload endpoint
+        form_def = FormDefinition(
+            form_name=form_data.form_name,
+            questions=formatted_questions,
+            creator_email=user['email']
+        )
+        
+        result = forms_col.insert_one(form_def.dict())
+        return {"message": "Form created", "form_id": str(result.inserted_id)}
+        
+    except DuplicateKeyError:
+        raise HTTPException(400, "Form name already exists")
+    
+    
 @app.get("/submissions/{form_name}")
 async def get_submissions(form_name: str, user: dict = Depends(get_current_user)):
     form = forms_col.find_one({"form_name": form_name})
@@ -121,7 +164,7 @@ async def get_submissions(form_name: str, user: dict = Depends(get_current_user)
     submissions = list(submissions_col.find(
         {"form_name": form_name},
         {"_id": 0, "user_name": 1, "user_email": 1, "answers": 1, "total_marks": 1, "submitted_at": 1}
-    ))
+    ).sort("total_marks", -1))  
     return submissions
 
 # Export submissions to Excel
@@ -151,6 +194,31 @@ async def get_user_forms(user: dict = Depends(get_current_user)):
         {"_id": 0, "form_name": 1, "created_at": 1}
     ))
     return {"forms": forms}
+
+@app.get("/my-submissions")
+async def get_user_submissions(user: dict = Depends(get_current_user)):
+    pipeline = [
+        {"$match": {"user_email": user['email']}},
+        {"$lookup": {
+            "from": "FormDefinitions",
+            "localField": "form_name",
+            "foreignField": "form_name",
+            "as": "form_data"
+        }},
+        {"$unwind": "$form_data"},
+        {"$project": {
+            "_id": 0,
+            "form_name": 1,
+            "submitted_at": 1,
+            "total_marks": 1,
+            "total_possible_marks": {
+                "$sum": "$form_data.questions.marks"
+            }
+        }}
+    ]
+    
+    submissions = list(submissions_col.aggregate(pipeline))
+    return submissions
 
 @app.get("/form/{form_name}")
 async def get_form(form_name: str):
