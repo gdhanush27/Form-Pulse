@@ -8,8 +8,6 @@
 
 Form Pulse is a modern form-building platform that combines intuitive form creation with powerful analytics. Built for educators, researchers, and businesses needing smart data collection solutions.
 
-![Form Pulse Dashboard](https://via.placeholder.com/800x400.png?text=FormPulse+Dashboard+Preview) <!-- Replace with actual screenshot -->
-
 ## Features 🚀
 
 - **🎨 Dual Form Creation Modes**
