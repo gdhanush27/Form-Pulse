@@ -9,6 +9,25 @@ db = firestore.client()
 app = FastAPI()
 security = HTTPBearer()
 
+# Configure CORS for specific origins
+allowed_origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "https://form-pulse.web.app",
+    "https://form-pulse.firebaseapp.com"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["Content-Length", "Content-Type"],
+    max_age=600
+)
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 # Firestore Collections
 FORMS_COLLECTION = "forms"
 SUBMISSIONS_COLLECTION = "submissions"
@@ -56,14 +75,7 @@ class QuizResponse(BaseModel):
     quiz: Optional[List[Question]] = None
     error: Optional[str] = None
     
-# CORS Configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
 
 def get_form_ref(form_name: str):
     return db.collection(FORMS_COLLECTION).document(form_name)
@@ -381,9 +393,19 @@ async def generate_quiz(pdf_text: str) -> Dict:
         )
 
 @app.post("/generate-quiz", response_model=QuizResponse)
-async def create_quiz(file: UploadFile = File(...)):
+async def create_quiz(file: UploadFile = File(..., max_size=MAX_FILE_SIZE)):
     """Main endpoint for quiz generation from PDF"""
     try:
+        # Verify file size
+        file.file.seek(0, 2)
+        file_size = file.file.tell()
+        await file.seek(0)
+        
+        if file_size > MAX_FILE_SIZE:
+            return JSONResponse(
+                {"error": f"File size {file_size/1024/1024:.2f}MB exceeds 50MB limit"},
+                status_code=413
+            )
         # Step 1: Extract text from PDF
         pdf_text = await extract_text_from_pdf(file)
         if not pdf_text.strip():
