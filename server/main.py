@@ -51,6 +51,11 @@ class FormSubmission(BaseModel):
     total_marks: float = 0.0
     submitted_at: datetime = datetime.now()
 
+class QuizResponse(BaseModel):
+    success: bool
+    quiz: Optional[List[Question]] = None
+    error: Optional[str] = None
+    
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
@@ -274,3 +279,134 @@ async def submit_form(submission: FormSubmission):
         "message": "Submission saved",
         "total_marks": total_marks
     }
+    
+async def extract_text_from_pdf(file: UploadFile) -> str:
+    """Extract text from PDF using pdfplumber"""
+    try:
+        # Read the uploaded file content
+        contents = await file.read()
+        
+        # Use BytesIO to create a file-like object
+        with pdfplumber.open(BytesIO(contents)) as pdf:
+            text = ""
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+            return text
+            
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"PDF text extraction failed: {str(e)}"
+        )
+
+def extract_json_from_response(content: str) -> Dict:
+    """Extract JSON from API response content"""
+    try:
+        # Try to find JSON in markdown code blocks
+        match = re.search(r'```(?:json)?\n(.*?)```', content, re.DOTALL)
+        if match:
+            json_str = match.group(1).strip()
+        else:
+            # Fallback to raw JSON parsing
+            json_str = content.strip()
+        return json.loads(json_str)
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid JSON format: {str(e)}"
+        )
+
+async def generate_quiz(pdf_text: str) -> Dict:
+    """Generate quiz using OpenRouter API"""
+    openrouter_key = "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"
+
+    prompt = f"""Generate a 10-question quiz in JSON format with:
+    - 4 easy questions (1 mark each)
+    - 3 medium questions (2 marks each)
+    - 3 hard questions (3 marks each)
+    Each question must have 4 options and a correct answer.
+    
+    Content:
+    {pdf_text[:10000]}
+    
+    Respond ONLY with valid JSON in this format:
+    {{
+      "questions": [
+        {{
+          "question": "Question text",
+          "options": ["<option_a_text>", "<option_b_text>", "<option_c_text>", "<option_d_text>"],
+          "correct_answer": "<correct_option_text>",
+          "marks": 1
+        }}
+      ]
+    }}
+    """
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {openrouter_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "deepseek/deepseek-chat-v3-0324:free",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.3,
+                    "max_tokens": 10000
+                }
+            )
+            response.raise_for_status()
+            
+            content = response.json()["choices"][0]["message"]["content"]
+            quiz_data = extract_json_from_response(content)
+            
+            # Validate quiz structure
+            questions = quiz_data.get("questions", [])
+            if len(questions) != 10:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Quiz must contain exactly 10 questions"
+                )
+                
+            return quiz_data
+            
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"OpenRouter API error: {e.response.text}"
+        )
+
+@app.post("/generate-quiz/", response_model=QuizResponse)
+async def create_quiz(file: UploadFile = File(...)):
+    """Main endpoint for quiz generation from PDF"""
+    try:
+        # Step 1: Extract text from PDF
+        pdf_text = await extract_text_from_pdf(file)
+        if not pdf_text.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="No text extracted from PDF"
+            )
+
+        # Step 2: Generate quiz
+        quiz_data = await generate_quiz(pdf_text)
+        
+        return {
+            "success": True,
+            "quiz": quiz_data.get("questions", [])
+        }
+        
+    except HTTPException as he:
+        return {
+            "success": False,
+            "error": he.detail
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {str(e)}"
+        }

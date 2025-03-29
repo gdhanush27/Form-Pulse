@@ -15,13 +15,15 @@ import {
   Stack,
   Divider,
   Chip,
-  Tooltip
+  Tooltip,
+  LinearProgress
 } from '@mui/material';
 import {
   AddCircleOutline as AddCircleOutlineIcon,
   RemoveCircleOutline as RemoveCircleOutlineIcon,
   ContentCopy as ContentCopyIcon,
-  Upload as UploadIcon
+  Upload as UploadIcon,
+  PictureAsPdf
 } from '@mui/icons-material';
 import axios from 'axios';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -42,6 +44,7 @@ const FormCreatorPage = () => {
   const [success, setSuccess] = useState('');
   const [formLink, setFormLink] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
 
   // Form building handlers
   const handleAddQuestion = () => {
@@ -81,9 +84,13 @@ const FormCreatorPage = () => {
     const updatedQuestions = [...questions];
     if (updatedQuestions[qIndex].options.length <= 2) return;
     updatedQuestions[qIndex].options = updatedQuestions[qIndex].options.filter((_, i) => i !== oIndex);
-    // Reset correct answer if it was the removed option
-    if (updatedQuestions[qIndex].correctAnswer === oIndex) {
-      updatedQuestions[qIndex].correctAnswer = null;
+    // Adjust correct answer index
+    if (updatedQuestions[qIndex].correctAnswer !== null) {
+      if (updatedQuestions[qIndex].correctAnswer === oIndex) {
+        updatedQuestions[qIndex].correctAnswer = null;
+      } else if (updatedQuestions[qIndex].correctAnswer > oIndex) {
+        updatedQuestions[qIndex].correctAnswer -= 1;
+      }
     }
     setQuestions(updatedQuestions);
   };
@@ -95,13 +102,75 @@ const FormCreatorPage = () => {
   };
 
   const handleMarksChange = (qIndex, value) => {
+    const numericValue = Number(value);
+    const marks = isNaN(numericValue) ? 1 : Math.max(1, numericValue);
     const updatedQuestions = [...questions];
-    updatedQuestions[qIndex].marks = Math.max(1, Number(value));
+    updatedQuestions[qIndex].marks = marks;
     setQuestions(updatedQuestions);
   };
 
+  // PDF upload handler
+  const handlePdfUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+  
+    const formData = new FormData();
+    formData.append('file', file); // Matches backend's expected key
+  
+    try {
+      setIsPdfLoading(true);
+      setError('');
+      const token = await user.getIdToken();
+      
+      const response = await axios.post(
+        'http://localhost:8000/generate-quiz',
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+  
+      if (response.data.success) {
+        // Format the response for our form creator
+        const formattedData = {
+          questions: response.data.quiz.map(q => ({
+            question: q.question,
+            options: q.options,
+            correct_answer: q.correct_answer,
+            marks: q.marks
+          }))
+        };
+        
+        setJsonData(JSON.stringify(formattedData, null, 2));
+        setUseJson(true); // Switch to JSON mode
+        setSuccess('Quiz generated successfully from PDF!');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || 
+                          err.message || 
+                          'PDF processing failed';
+      setError(errorMessage);
+    } finally {
+      setIsPdfLoading(false);
+      event.target.value = ''; // Reset file input
+    }
+  };
+
+  // Form name handler
+  const handleFormNameChange = (e) => {
+    const value = e.target.value
+      .replace(/\s/g, '_')
+      .replace(/[^a-zA-Z0-9_-]/g, '');
+    setFormName(value);
+  };
+
+  // Form validation
   const validateForm = () => {
     if (!formName.trim()) return 'Form name is required';
+    if (/\s/.test(formName)) return 'Form name cannot contain spaces';
     
     if (!useJson) {
       for (const q of questions) {
@@ -123,6 +192,7 @@ const FormCreatorPage = () => {
     return null;
   };
 
+  // Form submission
   const handleSubmit = async () => {
     const validationError = validateForm();
     if (validationError) return setError(validationError);
@@ -138,20 +208,22 @@ const FormCreatorPage = () => {
         }))
       };
 
-      const response = await axios.post('https://harshanpvtserver.duckdns.org/form-pulse/create-form', 
+      const response = await axios.post(
+        'https://harshanpvtserver.duckdns.org/form-pulse/create-form', 
         { form_name: formName, ...formData },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setSuccess('Form created successfully!');
-      setFormLink(`${window.location.origin}/form/${encodeURIComponent(formName)}`);
+      setFormLink(`${window.location.origin}/form/${response.data.formId || encodeURIComponent(formName)}`);
       setError('');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Form creation failed');
+      setError(err.response?.data?.detail || err.message || 'Form creation failed');
       setSuccess('');
     }
   };
 
+  // Link copying
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(formLink);
@@ -162,10 +234,12 @@ const FormCreatorPage = () => {
     }
   };
 
+  // Snackbar handling
   const handleCloseSnackbar = () => {
     setSuccess('');
     setError('');
   };
+
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', mt: 4, p: 2 }}>
       <Paper elevation={3} sx={{ p: 4, mb: 4 }}>
@@ -201,15 +275,37 @@ const FormCreatorPage = () => {
           label="Form Name"
           fullWidth
           value={formName}
-          onChange={(e) => setFormName(e.target.value)}
+          onChange={handleFormNameChange}
           sx={{ mb: 3 }}
           InputProps={{
             style: { fontSize: '1.1rem' }
           }}
+          helperText="No spaces allowed. Use underscores instead."
         />
 
         {useJson ? (
           <>
+            <Box sx={{ mb: 3 }}>
+              <Button
+                variant="contained"
+                component="label"
+                startIcon={<PictureAsPdf />}
+                disabled={isPdfLoading}
+              >
+                Upload PDF
+                <input
+                  type="file"
+                  hidden
+                  accept="application/pdf"
+                  onChange={handlePdfUpload}
+                />
+              </Button>
+              {isPdfLoading && <LinearProgress sx={{ mt: 1 }} />}
+              <Typography variant="caption" sx={{ ml: 2 }}>
+                Upload a PDF to automatically generate quiz questions
+              </Typography>
+            </Box>
+
             <TextField
               label="Form JSON"
               fullWidth
