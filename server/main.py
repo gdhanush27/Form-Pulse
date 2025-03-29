@@ -416,7 +416,7 @@ async def create_quiz(file: UploadFile = File(..., max_size=MAX_FILE_SIZE)):
 
         # Step 2: Generate quiz
         quiz_data = await generate_quiz(pdf_text)
-        
+        print(quiz_data)
         return {
             "success": True,
             "quiz": quiz_data.get("questions", [])
