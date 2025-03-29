@@ -32,7 +32,7 @@ const UserSubmissionsPage = () => {
       try {
         setLoading(true);
         const token = await user.getIdToken();
-        const response = await axios.get('http://localhost:8000/my-submissions', {
+        const response = await axios.get('https://harshanpvtserver.duckdns.org/form-pulse/my-submissions', {
           headers: { Authorization: `Bearer ${token}` }
         });
         console.log(response.data);

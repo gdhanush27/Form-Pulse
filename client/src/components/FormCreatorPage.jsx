@@ -138,7 +138,7 @@ const FormCreatorPage = () => {
         }))
       };
 
-      const response = await axios.post('http://localhost:8000/create-form', 
+      const response = await axios.post('https://harshanpvtserver.duckdns.org/form-pulse/create-form', 
         { form_name: formName, ...formData },
         { headers: { Authorization: `Bearer ${token}` } }
       );

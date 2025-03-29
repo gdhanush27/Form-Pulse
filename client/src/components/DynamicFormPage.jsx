@@ -42,7 +42,7 @@ const DynamicFormPage = () => {
     const fetchForm = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`http://localhost:8000/form/${form_name}`);
+        const response = await axios.get(`https://harshanpvtserver.duckdns.org/form-pulse/form/${form_name}`);
         setFormData(response.data);
         
         // Calculate maximum possible marks
@@ -79,7 +79,7 @@ const DynamicFormPage = () => {
         answers
       };
 
-      const response = await axios.post('http://localhost:8000/submit', submissionData);
+      const response = await axios.post('https://harshanpvtserver.duckdns.org/form-pulse/submit', submissionData);
       
       if (response.data.message) {
         setSubmitted(true);

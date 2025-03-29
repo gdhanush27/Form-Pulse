@@ -35,7 +35,7 @@ const AdminPage = () => {
       try {
         setLoading(true);
         const token = await user.getIdToken();
-        const response = await axios.get('http://localhost:8000/my-forms', {
+        const response = await axios.get('https://harshanpvtserver.duckdns.org/form-pulse/my-forms', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setForms(response.data.forms);
@@ -114,6 +114,7 @@ const AdminPage = () => {
           </Button>
         </Paper>
       ) : (
+        <>
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -158,6 +159,7 @@ const AdminPage = () => {
                       
                       <Tooltip title="Export to Excel">
                         <Button
+                        disabled="true"
                           variant="contained"
                           size="small"
                           onClick={() => handleExport(form.form_name)}
@@ -172,19 +174,21 @@ const AdminPage = () => {
             </TableBody>
           </Table>
 
-          <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h6">Bored of Old Forms</Typography>
-          <Button
-            variant="contained"
-            component={RouterLink}
-            to="/upload-form"
-            sx={{ mt: 2 }}
-          >
-            Create a New One
-          </Button>
-        </Paper>
+          
 
         </TableContainer>
+        <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
+        <Typography variant="h6">Bored of Old Forms</Typography>
+        <Button
+          variant="contained"
+          component={RouterLink}
+          to="/upload-form"
+          sx={{ mt: 2 }}
+        >
+          Create a New One
+        </Button>
+      </Paper>
+      </>
       )}
 
       <Snackbar

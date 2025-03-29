@@ -39,10 +39,10 @@ const SubmissionDetails = () => {
         const token = await user.getIdToken();
         
         const [formResponse, submissionsResponse] = await Promise.all([
-          axios.get(`http://localhost:8000/form/${form_name}`, {
+          axios.get(`https://harshanpvtserver.duckdns.org/form-pulse/form/${form_name}`, {
             headers: { Authorization: `Bearer ${token}` }
           }),
-          axios.get(`http://localhost:8000/submissions/${form_name}`, {
+          axios.get(`https://harshanpvtserver.duckdns.org/form-pulse/submissions/${form_name}`, {
             headers: { Authorization: `Bearer ${token}` }
           })
         ]);
@@ -70,7 +70,7 @@ const SubmissionDetails = () => {
     try {
       const token = await user.getIdToken();
       const response = await axios.get(
-        `http://localhost:8000/submissions/${form_name}/export`,
+        `https://harshanpvtserver.duckdns.org/form-pulse/submissions/${form_name}/export`,
         {
           headers: { Authorization: `Bearer ${token}` },
           responseType: 'blob'
@@ -108,6 +108,7 @@ const SubmissionDetails = () => {
           Submissions for {form_name}
         </Typography>
         <Button
+          disabled="true"
           variant="contained"
           startIcon={<FileDownloadIcon />}
           onClick={handleExport}
