@@ -332,7 +332,7 @@ def extract_json_from_response(content: str) -> Dict:
 
 async def generate_quiz(pdf_text: str) -> Dict:
     """Generate quiz using OpenRouter API"""
-    openrouter_key = "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"
+    openrouter_key = "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"
 
     prompt = f"""Generate a 10-question quiz in JSON format with:
     - 4 easy questions (1 mark each)
@@ -365,7 +365,7 @@ async def generate_quiz(pdf_text: str) -> Dict:
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "deepseek/deepseek-chat-v3-0324:free",
+                    "model": "rekaai/reka-flash-3:free",
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.3,
                     "max_tokens": 10000
@@ -393,42 +393,69 @@ async def generate_quiz(pdf_text: str) -> Dict:
         )
 
 @app.post("/generate-quiz", response_model=QuizResponse)
-async def create_quiz(file: UploadFile = File(..., max_size=MAX_FILE_SIZE)):
-    """Main endpoint for quiz generation from PDF"""
+async def create_quiz_from_pdf(
+    file: UploadFile = File(..., max_size=MAX_FILE_SIZE),
+    form_name: str = Form(...),
+    user: dict = Depends(get_current_user)
+):
+    """Endpoint to generate quiz from PDF and directly create form"""
     try:
-        # Verify file size
-        file.file.seek(0, 2)
-        file_size = file.file.tell()
-        await file.seek(0)
-        
-        if file_size > MAX_FILE_SIZE:
-            return JSONResponse(
-                {"error": f"File size {file_size/1024/1024:.2f}MB exceeds 50MB limit"},
-                status_code=413
-            )
-        # Step 1: Extract text from PDF
-        pdf_text = await extract_text_from_pdf(file)
-        if not pdf_text.strip():
-            raise HTTPException(
-                status_code=400,
-                detail="No text extracted from PDF"
-            )
+        # Validate form name first
+        if not form_name.isidentifier():
+            raise HTTPException(400, "Form name must be alphanumeric with underscores")
+            
+        form_ref = get_form_ref(form_name)
+        if form_ref.get().exists:
+            raise HTTPException(400, "Form name already exists")
 
-        # Step 2: Generate quiz
+        # PDF processing
+        pdf_text = await extract_text_from_pdf(file)
         quiz_data = await generate_quiz(pdf_text)
-        print(quiz_data)
+
+        # Convert to Pydantic model for validation
+        form_request = FormCreateRequest(
+            form_name=form_name,
+            questions=[
+                QuestionCreate(
+                    question=q["question"],
+                    options=q["options"],
+                    correct_answer=q["correct_answer"],
+                    marks=q["marks"]
+                ) for q in quiz_data["questions"]
+            ]
+        )
+
+        # Validate questions
+        for question in form_request.questions:
+            if not question.question.strip():
+                raise HTTPException(400, "All questions must have text")
+                
+            if len(question.options) < 2:
+                raise HTTPException(400, "Each question must have at least 2 options")
+                
+            if question.correct_answer not in question.options:
+                raise HTTPException(400, "Correct answer must be in options")
+
+        # Create form in Firestore
+        form_ref.set({
+            "form_name": form_name,
+            "questions": [q.dict() for q in form_request.questions],
+            "created_at": datetime.now(),
+            "creator_email": user['email']
+        })
+
         return {
             "success": True,
-            "quiz": quiz_data.get("questions", [])
+            "message": f"Form '{form_name}' created successfully with {len(form_request.questions)} questions"
         }
-        
+
     except HTTPException as he:
-        return {
-            "success": False,
-            "error": he.detail
-        }
+        return JSONResponse(
+            status_code=he.status_code,
+            content={"success": False, "error": he.detail}
+        )
     except Exception as e:
         return {
             "success": False,
-            "error": f"Unexpected error: {str(e)}"
+            "error": f"Form creation failed: {str(e)}"
         }
