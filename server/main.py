@@ -380,7 +380,7 @@ async def generate_quiz(pdf_text: str) -> Dict:
             detail=f"OpenRouter API error: {e.response.text}"
         )
 
-@app.post("/generate-quiz/", response_model=QuizResponse)
+@app.post("/generate-quiz", response_model=QuizResponse)
 async def create_quiz(file: UploadFile = File(...)):
     """Main endpoint for quiz generation from PDF"""
     try:
