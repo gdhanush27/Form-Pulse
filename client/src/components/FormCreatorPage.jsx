@@ -123,7 +123,7 @@ const FormCreatorPage = () => {
       const token = await user.getIdToken();
       
       const response = await axios.post(
-        'http://localhost:8000/generate-quiz',
+        'https://harshanpvtserver.duckdns.org/form-pulse/generate-quiz',
         formData,
         {
           headers: {
@@ -135,6 +135,7 @@ const FormCreatorPage = () => {
   
       if (response.data.success) {
         // Format the response for our form creator
+        console.log('PDF Response:', response.data);
         const formattedData = {
           questions: response.data.quiz.map(q => ({
             question: q.question,
@@ -143,7 +144,7 @@ const FormCreatorPage = () => {
             marks: q.marks
           }))
         };
-        
+        console.log('Formatted Data:', formattedData);
         setJsonData(JSON.stringify(formattedData, null, 2));
         setUseJson(true); // Switch to JSON mode
         setSuccess('Quiz generated successfully from PDF!');
