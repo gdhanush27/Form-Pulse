@@ -108,7 +108,7 @@ const SubmissionDetails = () => {
           Submissions for {form_name}
         </Typography>
         <Button
-          disabled="true"
+          // disabled={true}
           variant="contained"
           startIcon={<FileDownloadIcon />}
           onClick={handleExport}

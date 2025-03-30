@@ -14,9 +14,17 @@ import {
   Button,
   IconButton,
   Tooltip,
-  Snackbar
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Link
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DeleteIcon from '@mui/icons-material/Delete';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import axios from 'axios';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase';
@@ -28,6 +36,9 @@ const AdminPage = () => {
   const [error, setError] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [formToDelete, setFormToDelete] = useState(null);
   const [user] = useAuthState(auth);
 
   useEffect(() => {
@@ -40,7 +51,7 @@ const AdminPage = () => {
         });
         setForms(response.data.forms);
       } catch (err) {
-        setError(err.response?.data?.detail || 'Failed to load forms');
+        showSnackbar(err.response?.data?.detail || 'Failed to load forms', 'error');
       } finally {
         setLoading(false);
       }
@@ -49,14 +60,19 @@ const AdminPage = () => {
     if (user) fetchForms();
   }, [user]);
 
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
+
   const handleCopyLink = async (formName) => {
     try {
       const formLink = `${window.location.origin}/form/${encodeURIComponent(formName)}`;
       await navigator.clipboard.writeText(formLink);
-      setSnackbarMessage('Form link copied to clipboard!');
-      setSnackbarOpen(true);
+      showSnackbar('Form link copied to clipboard!');
     } catch (err) {
-      setError('Failed to copy link to clipboard');
+      showSnackbar('Failed to copy link to clipboard', 'error');
     }
   };
 
@@ -64,7 +80,7 @@ const AdminPage = () => {
     try {
       const token = await user.getIdToken();
       const response = await axios.get(
-        `http://localhost:8000/submissions/${formName}/export`,
+        `https://harshanpvtserver.duckdns.org/form-pulse/submissions/${formName}/export`,
         {
           headers: { Authorization: `Bearer ${token}` },
           responseType: 'blob'
@@ -78,13 +94,46 @@ const AdminPage = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      showSnackbar('Export started successfully');
     } catch (err) {
-      setError('Failed to export submissions');
+      showSnackbar('Failed to export submissions', 'error');
     }
+  };
+
+  const handleDeleteClick = (form) => {
+    setFormToDelete(form);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      const token = await user.getIdToken();
+      await axios.delete(
+        `https://harshanpvtserver.duckdns.org/form-pulse/form/${formToDelete.form_name}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setForms(forms.filter(f => f.form_name !== formToDelete.form_name));
+      showSnackbar('Form and all submissions deleted successfully');
+    } catch (err) {
+      showSnackbar(err.response?.data?.detail || 'Failed to delete form', 'error');
+    } finally {
+      setDeleteDialogOpen(false);
+      setFormToDelete(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setFormToDelete(null);
   };
 
   const handleCloseSnackbar = () => {
     setSnackbarOpen(false);
+  };
+
+  const getFormLink = (formName) => {
+    return `${window.location.origin}/form/${encodeURIComponent(formName)}`;
   };
 
   if (loading) {
@@ -115,89 +164,144 @@ const AdminPage = () => {
         </Paper>
       ) : (
         <>
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Form Name</TableCell>
-                <TableCell>Created At</TableCell>
-                <TableCell align="center">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {forms.map((form) => (
-                <TableRow key={form.form_name}>
-                  <TableCell>{form.form_name}</TableCell>
-                  <TableCell>
-                    {new Date(form.created_at).toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'center',
-                      gap: 1
-                    }}>
-                      <Tooltip title="View Submissions">
-                        <Button
-                          component={RouterLink}
-                          to={`/submissions/${form.form_name}`}
-                          variant="outlined"
-                          size="small"
-                        >
-                          View
-                        </Button>
-                      </Tooltip>
-                      
-                      <Tooltip title="Copy Form Link">
-                        <IconButton
-                          onClick={() => handleCopyLink(form.form_name)}
-                          color="primary"
-                        >
-                          <ContentCopyIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      
-                      <Tooltip title="Export to Excel">
-                        <Button
-                        disabled="true"
-                          variant="contained"
-                          size="small"
-                          onClick={() => handleExport(form.form_name)}
-                        >
-                          Export
-                        </Button>
-                      </Tooltip>
-                    </Box>
-                  </TableCell>
+        <Paper elevation={3} sx={{ p: 4, textAlign: 'center', mt: 4 }}>
+            <Typography variant="h6">Create a New Form</Typography>
+            <Button
+              variant="contained"
+              component={RouterLink}
+              to="/upload-form"
+              sx={{ mt: 2 }}
+              size="large"
+            >
+              Create New Form
+            </Button>
+          </Paper>
+          <br/>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Form Name</TableCell>
+                  <TableCell>Created At</TableCell>
+                  <TableCell align="center">Actions</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {forms.map((form) => (
+                  <TableRow key={form.form_name}>
+                    <TableCell>{form.form_name}</TableCell>
+                    <TableCell>
+                      {new Date(form.created_at).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'center',
+                        gap: 1,
+                        flexWrap: 'wrap'
+                      }}>
+                        <Tooltip title="Open Form in New Tab">
+                          <IconButton
+                            component={Link}
+                            href={getFormLink(form.form_name)}
+                            target="_blank"
+                            rel="noopener"
+                          >
+                            <OpenInNewIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+
+                        <Tooltip title="View Submissions">
+                          <Button
+                            component={RouterLink}
+                            to={`/submissions/${form.form_name}`}
+                            variant="outlined"
+                            size="small"
+                          >
+                            View
+                          </Button>
+                        </Tooltip>
+                        
+                        <Tooltip title="Copy Form Link">
+                          <IconButton
+                            onClick={() => handleCopyLink(form.form_name)}
+                            color="primary"
+                          >
+                            <ContentCopyIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        
+                        <Tooltip title="Export to Excel">
+                          <Button
+                            // make this disavled == true
+                            // disabled={true}
+                            variant="contained"
+                            size="small"
+                            onClick={() => handleExport(form.form_name)}
+                            sx={{ ml: 1 }}
+                          >
+                            Export
+                          </Button>
+                        </Tooltip>
+
+                        <Tooltip title="Delete Form">
+                          <IconButton
+                            onClick={() => handleDeleteClick(form)}
+                            color="error"
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
           
-
-        </TableContainer>
-        <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
-        <Typography variant="h6">Bored of Old Forms</Typography>
-        <Button
-          variant="contained"
-          component={RouterLink}
-          to="/upload-form"
-          sx={{ mt: 2 }}
-        >
-          Create a New One
-        </Button>
-      </Paper>
-      </>
+        </>
       )}
 
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          Delete Form: {formToDelete?.form_name}?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            This will permanently delete the form and all its submissions. This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for notifications */}
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={3000}
+        autoHideDuration={6000}
         onClose={handleCloseSnackbar}
-        message={snackbarMessage}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
+      >
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
