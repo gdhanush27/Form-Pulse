@@ -164,6 +164,7 @@ async def get_submissions(form_name: str, user: dict = Depends(get_current_user)
     
     return sorted(submissions, key=lambda x: x['total_marks'], reverse=True)
 
+
 @app.get("/submissions/{form_name}/export")
 async def export_submissions(form_name: str, user: dict = Depends(get_current_user)):
     form_ref = get_form_ref(form_name)
@@ -178,7 +179,12 @@ async def export_submissions(form_name: str, user: dict = Depends(get_current_us
         .stream()
     
     for doc in docs:
-        submissions.append(doc.to_dict())
+        submission = doc.to_dict()
+        # Convert timezone-aware datetimes to naive UTC
+        for key, value in submission.items():
+            if isinstance(value, dt.datetime) and value.tzinfo is not None:
+                submission[key] = value.astimezone(dt.timezone.utc).replace(tzinfo=None)
+        submissions.append(submission)
     
     df = pd.DataFrame(submissions)
     output = BytesIO()
