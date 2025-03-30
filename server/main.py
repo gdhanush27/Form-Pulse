@@ -1,5 +1,6 @@
 from import_statements import *
-
+from together import Together
+# uvicorn main:app --reload
 # Initialize Firebase
 path_to_credentials = os.path.join(os.getcwd(), "dynamic-form-270-firebase-adminsdk-fbsvc-efae9b4231.json")
 cred = credentials.Certificate(path_to_credentials)
@@ -120,7 +121,6 @@ async def upload_form(
 
     except json.JSONDecodeError:
         raise HTTPException(400, "Invalid JSON format")
-    except ValueError as e:
         raise HTTPException(400, str(e))
 
 @app.post("/create-form")
@@ -330,9 +330,9 @@ def extract_json_from_response(content: str) -> Dict:
             detail=f"Invalid JSON format: {str(e)}"
         )
 
-async def generate_quiz(pdf_text: str) -> Dict:
-    """Generate quiz using OpenRouter API"""
-    openrouter_key = "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"
+async def generate_quiz_with_together(pdf_text: str) -> Dict:
+    """Generate quiz using Together API"""
+    client = Together(api_key="5b7a2193bac4ff4aa1c037ba6c5acc359663713b2f7267417003a4c6e76cf269")
 
     prompt = f"""Generate a 10-question quiz in JSON format with:
     - 4 easy questions (1 mark each)
@@ -357,39 +357,27 @@ async def generate_quiz(pdf_text: str) -> Dict:
     """
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {openrouter_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "rekaai/reka-flash-3:free",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.3,
-                    "max_tokens": 10000
-                }
+        response = client.chat.completions.create(
+            model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        content = response.choices[0].message.content
+        quiz_data = extract_json_from_response(content)
+
+        # Validate quiz structure
+        questions = quiz_data.get("questions", [])
+        if len(questions) != 10:
+            raise HTTPException(
+                status_code=422,
+                detail="Quiz must contain exactly 10 questions"
             )
-            response.raise_for_status()
-            
-            content = response.json()["choices"][0]["message"]["content"]
-            quiz_data = extract_json_from_response(content)
-            
-            # Validate quiz structure
-            questions = quiz_data.get("questions", [])
-            if len(questions) != 10:
-                raise HTTPException(
-                    status_code=422,
-                    detail="Quiz must contain exactly 10 questions"
-                )
-                
-            return quiz_data
-            
-    except httpx.HTTPStatusError as e:
+
+        return quiz_data
+
+    except Exception as e:
         raise HTTPException(
-            status_code=e.response.status_code,
-            detail=f"OpenRouter API error: {e.response.text}"
+            status_code=500,
+            detail=f"Together API error: {str(e)}"
         )
 
 @app.post("/generate-quiz", response_model=QuizResponse)
@@ -410,7 +398,7 @@ async def create_quiz_from_pdf(
 
         # PDF processing
         pdf_text = await extract_text_from_pdf(file)
-        quiz_data = await generate_quiz(pdf_text)
+        quiz_data = await generate_quiz_with_together(pdf_text)
 
         # Convert to Pydantic model for validation
         form_request = FormCreateRequest(
