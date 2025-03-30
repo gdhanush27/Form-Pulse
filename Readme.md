@@ -2,7 +2,7 @@
 
 **Smart Form Builder with Real-Time Analytics**
 
-[![License: GNU](https://img.shields.io/badge/License-MIT-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html#license-text)
+[![License: GNU](https://img.shields.io/badge/License-GNU-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html#license-text)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-green.svg)](https://www.python.org/)
 [![React 18+](https://img.shields.io/badge/React-18+-61DAFB.svg)](https://reactjs.org/)
 
