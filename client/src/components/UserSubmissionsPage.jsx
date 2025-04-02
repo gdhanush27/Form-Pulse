@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../backend_url';
 import {
   Box,
   Typography,
@@ -13,12 +14,26 @@ import {
   TableRow,
   IconButton,
   Tooltip,
-  Snackbar
+  Snackbar,
+  Chip,
+  Link,
+  Button,
+  Grid,
+  Card,
+  CardContent,
+  Divider
 } from '@mui/material';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import {
+  OpenInNew as OpenInNewIcon,
+  ContentCopy as ContentCopyIcon,
+  Assignment as AssignmentIcon,
+  Visibility as VisibilityIcon,
+  Refresh as RefreshIcon
+} from '@mui/icons-material';
 import axios from 'axios';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase';
+import { useNavigate } from 'react-router-dom';
 
 const UserSubmissionsPage = () => {
   const [submissions, setSubmissions] = useState([]);
@@ -26,23 +41,58 @@ const UserSubmissionsPage = () => {
   const [error, setError] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [user] = useAuthState(auth);
+  const [stats, setStats] = useState({
+    totalSubmissions: 0,
+    averageScore: 0,
+    bestScore: 0
+  });
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchSubmissions = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         const token = await user.getIdToken();
-        const response = await axios.get('https://harshanpvtserver.duckdns.org/form-pulse/my-submissions', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        console.log(response.data);
-        // Process submissions to ensure valid total_possible_marks
-        const processedSubmissions = response.data.map(sub => ({
-          ...sub,
-          total_possible_marks: sub.total_possible_marks || 1 // Fallback to 1 to prevent NaN
-        }));
         
+        // Fetch submissions and stats
+        const [submissionsRes, statsRes] = await Promise.all([
+          axios.get(API_URL + 'my-submissions', {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          axios.get(API_URL + 'my-submissions/stats', {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        ]);
+
+        // Process submissions with form settings
+        const processedSubmissions = await Promise.all(
+          submissionsRes.data.map(async (sub) => {
+            try {
+              const formRes = await axios.get(API_URL + `form/${sub.form_name}`, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              return {
+                ...sub,
+                total_possible_marks: sub.total_possible_marks || 1,
+                show_answers: formRes.data.show_answers !== false,
+                is_protected: formRes.data.protected || false,
+                form_title: formRes.data.title || sub.form_name
+              };
+            } catch (err) {
+              console.error(`Error fetching form ${sub.form_name}:`, err);
+              return {
+                ...sub,
+                total_possible_marks: sub.total_possible_marks || 1,
+                show_answers: true,
+                is_protected: false,
+                form_title: sub.form_name
+              };
+            }
+          })
+        );
+
         setSubmissions(processedSubmissions);
+        setStats(statsRes.data);
       } catch (err) {
         setError(err.response?.data?.detail || 'Failed to load submissions');
       } finally {
@@ -50,7 +100,7 @@ const UserSubmissionsPage = () => {
       }
     };
 
-    if (user) fetchSubmissions();
+    if (user) fetchData();
   }, [user]);
 
   const handleCopyLink = async (formName) => {
@@ -63,6 +113,14 @@ const UserSubmissionsPage = () => {
     }
   };
 
+  const handleRefresh = () => {
+    setLoading(true);
+    setError('');
+    setSubmissions([]);
+    // Retrigger the useEffect
+    const token = user.getIdToken();
+  };
+
   const handleCloseSnackbar = () => {
     setSnackbarOpen(false);
   };
@@ -72,60 +130,195 @@ const UserSubmissionsPage = () => {
   };
 
   if (loading) {
-    return <CircularProgress sx={{ display: 'block', margin: '2rem auto' }} />;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
   if (error) {
-    return <Alert severity="error" sx={{ maxWidth: 600, margin: '2rem auto' }}>{error}</Alert>;
+    return (
+      <Alert 
+        severity="error" 
+        sx={{ maxWidth: 600, mx: 'auto', mt: 4 }}
+        action={
+          <Button 
+            color="inherit" 
+            size="small"
+            onClick={handleRefresh}
+          >
+            Retry
+          </Button>
+        }
+      >
+        {error}
+      </Alert>
+    );
   }
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 4, p: 2 }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 4 }}>
-        My Submitted Forms
-      </Typography>
+    <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
+          My Submissions
+        </Typography>
+        {/* <Button
+          variant="outlined"
+          startIcon={<RefreshIcon />}
+          onClick={handleRefresh}
+        >
+          Refresh
+        </Button> */}
+      </Box>
+
+      {/* Stats Cards */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} md={4}>
+          <Card elevation={3}>
+            <CardContent>
+              <Typography variant="h6" color="text.secondary">
+                Total Submissions
+              </Typography>
+              <Typography variant="h3" sx={{ mt: 1 }}>
+                {stats.totalSubmissions}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        {/* <Grid item xs={12} md={4}>
+          <Card elevation={3}>
+            <CardContent>
+              <Typography variant="h6" color="text.secondary">
+                Average Score
+              </Typography>
+              <Typography variant="h3" sx={{ mt: 1 }}>
+                {stats.averageScore}%
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Card elevation={3}>
+            <CardContent>
+              <Typography variant="h6" color="text.secondary">
+                Best Score
+              </Typography>
+              <Typography variant="h3" sx={{ mt: 1 }}>
+                {stats.bestScore}%
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid> */}
+      </Grid>
 
       {submissions.length === 0 ? (
-        <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h6">No submissions found</Typography>
-          <Typography variant="body1" sx={{ mt: 2 }}>
-            Submit your first form to see it listed here
+        <Paper elevation={3} sx={{ p: 6, textAlign: 'center' }}>
+          <AssignmentIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h5" sx={{ mb: 2 }}>
+            No submissions found
           </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            You haven't submitted any forms yet
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => navigate('/')}
+          >
+            Browse Forms
+          </Button>
         </Paper>
       ) : (
-        <TableContainer component={Paper}>
+        <TableContainer component={Paper} elevation={3}>
           <Table>
             <TableHead>
-              <TableRow>
-                <TableCell>Form Name</TableCell>
+              <TableRow sx={{ bgcolor: 'background.default' }}>
+                <TableCell>Form Title</TableCell>
+                <TableCell>Status</TableCell>
                 <TableCell>Submitted At</TableCell>
                 <TableCell>Score</TableCell>
                 <TableCell>Percentage</TableCell>
-                <TableCell>Form Link</TableCell>
+                <TableCell align="center">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {submissions.map((submission, index) => (
-                <TableRow key={index}>
-                  <TableCell>{submission.form_name}</TableCell>
+                <TableRow key={index} hover>
+                  <TableCell>
+                    <Typography fontWeight="medium">
+                      {submission.form_title}
+                    </Typography>
+                    {submission.is_protected && (
+                      <Chip 
+                        label="Proctored" 
+                        size="small" 
+                        color="warning" 
+                        sx={{ mt: 1 }} 
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={submission.show_answers ? "Results Available" : "Submitted"} 
+                      color={submission.show_answers ? "success" : "info"} 
+                      size="small"
+                    />
+                  </TableCell>
                   <TableCell>
                     {new Date(submission.submitted_at).toLocaleString()}
                   </TableCell>
                   <TableCell>
-                    {submission.total_marks} / {submission.total_possible_marks}
+                    {submission.show_answers ? (
+                      `${submission.total_marks} / ${submission.total_possible_marks}`
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        Hidden
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell>
-                    {calculatePercentage(submission.total_marks, submission.total_possible_marks)}%
+                    {submission.show_answers ? (
+                      `${calculatePercentage(submission.total_marks, submission.total_possible_marks)}%`
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        Hidden
+                      </Typography>
+                    )}
                   </TableCell>
-                  <TableCell>
-                    <Tooltip title="Copy form link">
-                      <IconButton
-                        onClick={() => handleCopyLink(submission.form_name)}
-                        color="primary"
-                      >
-                        <ContentCopyIcon />
-                      </IconButton>
-                    </Tooltip>
+                  <TableCell align="center">
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                      <Tooltip title="View Form">
+                        <IconButton
+                          component={Link}
+                          href={`${window.location.origin}/form/${encodeURIComponent(submission.form_name)}`}
+                          target="_blank"
+                          rel="noopener"
+                          color="primary"
+                        >
+                          <OpenInNewIcon />
+                        </IconButton>
+                      </Tooltip>
+
+                      <Tooltip title="Copy Form Link">
+                        <IconButton
+                          onClick={() => handleCopyLink(submission.form_name)}
+                          color="primary"
+                        >
+                          <ContentCopyIcon />
+                        </IconButton>
+                      </Tooltip>
+
+                      {/* {submission.show_answers && (
+                        <Tooltip title="View Details">
+                          <IconButton
+                            onClick={() => navigate(`/submission/${submission.id}`)}
+                            color="primary"
+                          >
+                            <VisibilityIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )} */}
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))}
@@ -136,11 +329,18 @@ const UserSubmissionsPage = () => {
 
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={2000}
+        autoHideDuration={3000}
         onClose={handleCloseSnackbar}
-        message="Form link copied to clipboard!"
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
+      >
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity="success"
+          sx={{ width: '100%' }}
+        >
+          Form link copied to clipboard!
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

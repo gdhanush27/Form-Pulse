@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import {API_URL} from '../backend_url.js'; 
 import {
   Box,
   Button,
@@ -59,7 +60,7 @@ const FormUploadPage = () => {
     formData.append('form_name', formName);
 
     try {
-      const response = await axios.post('https://harshanpvtserver.duckdns.org/form-pulse/upload-form', formData, {
+      const response = await axios.post(API_URL+'upload-form', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${await user.getIdToken()}`

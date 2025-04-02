@@ -50,18 +50,24 @@ class Question(BaseModel):
 class FormDefinition(BaseModel):
     form_name: str
     questions: List[Question]
+    protected: bool = False
+    show_answers: bool = True
     created_at: datetime = datetime.now()
     creator_email: str
-
+    
+# Update the QuestionCreate model
 class QuestionCreate(BaseModel):
     question: str
     options: List[str]
     correct_answer: str
     marks: float
 
+# Update the FormCreateRequest model
 class FormCreateRequest(BaseModel):
     form_name: str
     questions: List[QuestionCreate]
+    protected: bool = False
+    show_answers: bool = True
 
 class FormSubmission(BaseModel):
     form_name: str
@@ -76,7 +82,16 @@ class QuizResponse(BaseModel):
     quiz: Optional[List[Question]] = None
     error: Optional[str] = None
     
-
+class SubmissionResponse(BaseModel):
+    id: str
+    form_name: str
+    user_name: str
+    user_email: str
+    answers: dict
+    total_marks: float
+    total_possible_marks: float
+    submitted_at: str
+    proctoring_metrics: Optional[dict] = None
 
 def get_form_ref(form_name: str):
     return db.collection(FORMS_COLLECTION).document(form_name)
@@ -88,6 +103,8 @@ def get_submissions_ref():
 async def upload_form(
     file: UploadFile = File(...),
     form_name: str = Form(...),
+    protected: bool = Form(False),
+    show_answers: bool = Form(True),
     user: dict = Depends(get_current_user)
 ):
     try:
@@ -113,6 +130,8 @@ async def upload_form(
         form_ref.set({
             "form_name": form_name,
             "questions": questions,
+            "protected": protected,
+            "show_answers": show_answers,
             "created_at": datetime.now(),
             "creator_email": user['email']
         })
@@ -121,7 +140,10 @@ async def upload_form(
 
     except json.JSONDecodeError:
         raise HTTPException(400, "Invalid JSON format")
+    except ValueError as e:
         raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Internal server error: {str(e)}")
 
 @app.post("/create-form")
 async def create_form(form_data: FormCreateRequest, user: dict = Depends(get_current_user)):
@@ -138,6 +160,8 @@ async def create_form(form_data: FormCreateRequest, user: dict = Depends(get_cur
     form_ref.set({
         "form_name": form_data.form_name,
         "questions": questions,
+        "protected": form_data.protected,
+        "show_answers": form_data.show_answers,
         "created_at": datetime.now(),
         "creator_email": user['email']
     })
@@ -233,6 +257,30 @@ async def get_form(form_name: str):
     if not form.exists:
         raise HTTPException(404, "Form not found")
     return form.to_dict()
+
+@app.get("/form/{form_name}")
+async def get_form(form_name: str, credentials: HTTPAuthorizationCredentials = Depends(security)):
+    form_ref = get_form_ref(form_name)
+    form = form_ref.get()
+    if not form.exists:
+        raise HTTPException(404, "Form not found")
+    
+    form_data = form.to_dict()
+    
+    # # Check if form is protected
+    # if form_data.get("protected", False):
+    #     try:
+    #         user = await get_current_user(credentials)
+    #         # Optionally add additional checks here (e.g., if user has access)
+    #     except Exception as e:
+    #         raise HTTPException(403, "This is a protected form - authentication required")
+    
+    # # Remove answers if show_answers is False
+    # if not form_data.get("show_answers", True):
+    #     for question in form_data["questions"]:
+    #         question.pop("correct_answer", None)
+    
+    return form_data
 
 @app.get("/forms/")
 async def list_forms():
@@ -390,6 +438,8 @@ async def generate_quiz_with_together(pdf_text: str) -> Dict:
 async def create_quiz_from_pdf(
     file: UploadFile = File(..., max_size=MAX_FILE_SIZE),
     form_name: str = Form(...),
+    protected: bool = Form(False),
+    show_answers: bool = Form(True),
     user: dict = Depends(get_current_user)
 ):
     """Endpoint to generate quiz from PDF and directly create form"""
@@ -416,7 +466,9 @@ async def create_quiz_from_pdf(
                     correct_answer=q["correct_answer"],
                     marks=q["marks"]
                 ) for q in quiz_data["questions"]
-            ]
+            ],
+            protected=protected,
+            show_answers=show_answers
         )
 
         # Validate questions
@@ -434,6 +486,8 @@ async def create_quiz_from_pdf(
         form_ref.set({
             "form_name": form_name,
             "questions": [q.dict() for q in form_request.questions],
+            "protected": protected,
+            "show_answers": show_answers,
             "created_at": datetime.now(),
             "creator_email": user['email']
         })
@@ -453,3 +507,164 @@ async def create_quiz_from_pdf(
             "success": False,
             "error": f"Form creation failed: {str(e)}"
         }
+        
+@app.get("/admin-stats")
+async def get_admin_stats(user: dict = Depends(get_current_user)):
+    try:
+        # Get all forms created by this user
+        forms_query = db.collection(FORMS_COLLECTION)\
+                        .where("creator_email", "==", user['email'])
+        forms = [f.to_dict() for f in forms_query.stream()]
+        
+        # Calculate form statistics
+        total_forms = len(forms)
+        
+        if total_forms == 0:
+            return {
+                "total_forms": 0,
+                "protected_forms": 0,
+                "total_submissions": 0
+            }
+            
+        protected_forms = sum(1 for f in forms if f.get('protected', False))
+        
+        # Get all submissions for these forms
+        form_names = [f['form_name'] for f in forms]
+        submissions_query = db.collection(SUBMISSIONS_COLLECTION)\
+                             .where("form_name", "in", form_names)
+        total_submissions = sum(1 for _ in submissions_query.stream())
+
+        return {
+            "total_forms": total_forms,
+            "protected_forms": protected_forms,
+            "total_submissions": total_submissions
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error retrieving admin stats: {str(e)}"
+        )
+        
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"} 
+
+@app.get("/my-submissions/stats")
+async def get_user_submission_stats(user: dict = Depends(get_current_user)):
+    try:
+        # Get all submissions for this user
+        submissions_ref = db.collection("submissions")
+        submissions_query = submissions_ref.where(filter=FieldFilter("user_email", "==", user['email']))
+        submissions = [s.to_dict() for s in submissions_query.stream()]
+        
+        if not submissions:
+            return {
+                "totalSubmissions": 0,
+                "averageScore": 0,
+                "bestScore": 0
+            }
+        total_submissions = len(submissions)
+        # Get forms to check which submissions have visible scores
+        form_names = list({s['form_name'] for s in submissions})
+        forms_ref = db.collection("forms")
+        forms_query = forms_ref.where(filter=FieldFilter("form_name", "in", form_names))
+        forms = {f.id: f.to_dict() for f in forms_query.stream()}
+        
+        # Calculate scores only for forms where answers are visible
+        scores = []
+        for sub in submissions:
+            form = forms.get(sub['form_name'], {})
+            if form.get('show_answers', True):  # Default to True if not specified
+                if 'total_marks' in sub and 'total_possible_marks' in sub:
+                    if sub['total_possible_marks'] > 0:
+                        percentage = (sub['total_marks'] / sub['total_possible_marks']) * 100
+                        scores.append(percentage)
+        
+        # Calculate derived stats
+        average_score = round(sum(scores) / len(scores), 2) if scores else 0
+        best_score = round(max(scores), 2) if scores else 0
+        
+        return {
+            "totalSubmissions": total_submissions,
+            "averageScore": average_score,
+            "bestScore": best_score
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error calculating submission stats: {str(e)}"
+        )
+
+# @app.get("/submission/{submission_id}", response_model=SubmissionResponse)
+# async def get_submission(
+#     submission_id: str,
+#     user: dict = Depends(get_current_user)
+# ):
+#     try:
+#         # Get the submission document
+#         submission_doc = get_submissions_ref().document(submission_id).get()
+        
+#         if not submission_doc.exists:
+#             raise HTTPException(status_code=404, detail="Submission not found")
+        
+#         submission_data = submission_doc.to_dict()
+        
+#         # Verify the requesting user has access to this submission
+#         if submission_data["user_email"] != user["email"]:
+#             # Check if user is the form creator (admin view)
+#             form_ref = get_form_ref(submission_data["form_name"])
+#             form_doc = form_ref.get()
+            
+#             if not form_doc.exists or form_doc.to_dict().get("creator_email") != user["email"]:
+#                 raise HTTPException(
+#                     status_code=403,
+#                     detail="You don't have permission to view this submission"
+#                 )
+        
+#         # Get total possible marks from the form
+#         form_ref = get_form_ref(submission_data["form_name"])
+#         form_doc = form_ref.get()
+        
+#         if not form_doc.exists:
+#             raise HTTPException(
+#                 status_code=404,
+#                 detail="Associated form not found"
+#             )
+        
+#         form_data = form_doc.to_dict()
+#         questions = form_data.get("questions", [])
+#         total_possible = sum(q.get("marks", 0) for q in questions)
+        
+#         # Handle timestamp conversion
+#         submitted_at = ""
+#         if isinstance(submission_data.get("submitted_at"), datetime):
+#             submitted_at = submission_data["submitted_at"].isoformat()
+#         else:
+#             submitted_at = str(submission_data.get("submitted_at", ""))
+        
+#         response_data = {
+#             "id": submission_doc.id,
+#             "form_name": submission_data["form_name"],
+#             "user_name": submission_data["user_name"],
+#             "user_email": submission_data["user_email"],
+#             "answers": submission_data["answers"],
+#             "total_marks": float(submission_data.get("total_marks", 0)),
+#             "total_possible_marks": float(total_possible),
+#             "submitted_at": submitted_at,
+#         }
+        
+#         # Include proctoring metrics if available
+#         if "proctoring_metrics" in submission_data:
+#             response_data["proctoring_metrics"] = submission_data["proctoring_metrics"]
+        
+#         return response_data
+        
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"Error retrieving submission: {str(e)}"
+#         )

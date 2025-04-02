@@ -11,6 +11,7 @@ import { Container } from '@mui/material';
 import NotFoundPage from './components/NotFoundPage';
 import UserSubmissionsPage from './components/UserSubmissionsPage';
 import FormCreatorPage from './components/FormCreatorPage';
+// import SubmissionPage from './components/SubmissionPage';
 
 function App() {
   return (
@@ -47,8 +48,13 @@ function App() {
             <ProtectedRoute> <FormCreatorPage /> </ProtectedRoute>
           } />
 
+          {/* <Route path="/submission/:id" element={
+            <ProtectedRoute> <SubmissionPage /> </ProtectedRoute>
+          } /> */}
+
           {/* Not found route */}
           <Route path="*" element={<NotFoundPage />} />
+
         </Routes>
       </Container>
     </Router>

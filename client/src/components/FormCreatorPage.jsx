@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import {API_URL} from '../backend_url.js'; // Import the backend URL from the config file;
 import {
   Box,
   Button,
@@ -16,7 +17,9 @@ import {
   Divider,
   Tooltip,
   LinearProgress,
-  InputAdornment
+  InputAdornment,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import {
   AddCircleOutline as AddCircleOutlineIcon,
@@ -35,6 +38,8 @@ import { auth } from '../firebase';
 const FormCreatorPage = () => {
   const [user] = useAuthState(auth);
   const [formName, setFormName] = useState('');
+  const [useProtected, setUseProtected] = useState(false);
+  const [showAnswers, setShowAnswers] = useState(true);
   const [questions, setQuestions] = useState([{
     question: '',
     options: ['', ''],
@@ -52,7 +57,8 @@ const FormCreatorPage = () => {
   const handleFormNameChange = (e) => {
     const value = e.target.value
       .replace(/\s/g, '_')
-      .replace(/[^a-zA-Z0-9_-]/g, '');
+      .replace(/[^a-zA-Z0-9_-]/g, '')
+      .toLowerCase();
     setFormName(value);
   };
 
@@ -143,12 +149,16 @@ const FormCreatorPage = () => {
       const token = await user.getIdToken();
       
       const response = await axios.post(
-        'https://harshanpvtserver.duckdns.org/form-pulse/generate-quiz',
+        API_URL+'generate-quiz',
         formData,
         {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
+          },
+          params: {
+            protected: useProtected,
+            show_answers: showAnswers
           }
         }
       );
@@ -176,7 +186,9 @@ const FormCreatorPage = () => {
 
   const validateForm = () => {
     if (!formName.trim()) return 'Form name is required';
-    if (/\s/.test(formName)) return 'Form name cannot contain spaces';
+    if (!/^[a-z][a-z0-9_]*$/.test(formName)) {
+      return 'Form name must start with a letter and only contain letters, numbers and underscores';
+    }
     
     if (mode === 'gui') {
       for (const q of questions) {
@@ -204,7 +216,7 @@ const FormCreatorPage = () => {
       setError(`Error in form: ${validationError}`);
       return;
     }
-
+  
     try {
       const token = await user.getIdToken();
       const formData = mode === 'json' ? JSON.parse(jsonData) : {
@@ -213,15 +225,20 @@ const FormCreatorPage = () => {
           options: q.options,
           correct_answer: q.options[q.correctAnswer],
           marks: q.marks
-        }))
+        })),
+        protected: useProtected,
+        show_answers: showAnswers
       };
-
+  
       const response = await axios.post(
-        'https://harshanpvtserver.duckdns.org/form-pulse/create-form', 
-        { form_name: formName, ...formData },
+        API_URL+'create-form', 
+        { 
+          form_name: formName, 
+          ...formData 
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
+  
       setSuccess('Form created successfully!');
       setFormLink(`${window.location.origin}/form/${response.data.formId || encodeURIComponent(formName)}`);
       setError('');
@@ -439,6 +456,32 @@ const FormCreatorPage = () => {
           sx={{ mb: 3 }}
           helperText="No spaces allowed. Use underscores instead."
         />
+        <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
+  <FormGroup>
+    <FormControlLabel
+      control={
+        <Switch 
+          checked={useProtected}
+          onChange={(e) => setUseProtected(e.target.checked)}
+          color="primary"
+        />
+      }
+      label="Use Protected"
+    />
+  </FormGroup>
+  <FormGroup>
+    <FormControlLabel
+      control={
+        <Switch 
+          checked={showAnswers}
+          onChange={(e) => setShowAnswers(e.target.checked)}
+          color="secondary"
+        />
+      }
+      label="Show Answers"
+    />
+  </FormGroup>
+</Box>
 
         {/* Show form link immediately for JSON and Automated modes */}
         {(mode === 'json' || mode === 'automated') && formLink && (
