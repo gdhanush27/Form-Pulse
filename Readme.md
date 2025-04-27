@@ -1,3 +1,4 @@
+
 # Form Pulse 📋✨
 
 **Smart Form Builder with Real-Time Analytics**
@@ -5,6 +6,7 @@
 [![License: GNU](https://img.shields.io/badge/License-GNU-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html#license-text)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-green.svg)](https://www.python.org/)
 [![React 18+](https://img.shields.io/badge/React-18+-61DAFB.svg)](https://reactjs.org/)
+[![Docker](https://img.shields.io/badge/Docker-available-2496ED.svg)](https://hub.docker.com/r/gdhanush270/form-pulse-frontend)
 
 Form Pulse is a modern form-building platform that combines intuitive form creation with powerful analytics. Built for educators, researchers, and businesses needing smart data collection solutions.
 
@@ -68,6 +70,15 @@ npm install
 npm start
 ```
 
+### Docker Deployment 🐳
+
+Frontend Docker image available on Docker Hub:
+
+```bash
+docker pull gdhanush270/form-pulse-frontend:latest
+docker run -p 80:3000 gdhanush270/form-pulse-frontend
+```
+
 ## Usage Guide 🖥️
 
 ### Creating Forms
@@ -119,6 +130,11 @@ npm start
 - React 18 - Component-based UI
 - Material-UI - Modern design system
 - Firebase Auth - Secure authentication
+
+**Deployment**  
+- Docker - Containerization
+- Docker Compose - Multi-container orchestration
+
 ---
 
 ## License 📄
@@ -128,6 +144,4 @@ This project is licensed under the GNU GENERAL PUBLIC LICENSE - see [LICENSE](LI
 ---
 
 **Form Pulse** © 2025 - Crafted with ❤️ by Dhanush  
-[Report Bug](https://github.com/gdhanush27/Form-Pulse/issues) | [Request Feature](https://github.com/gdhanush27/Form-Pulse/issues)
-
----
+[Report Bug](https://github.com/gdhanush27/Form-Pulse/issues) | [Request Feature](https://github.com/gdhanush27/Form-Pulse/issues) | [Docker Hub](https://hub.docker.com/r/gdhanush270/form-pulse-frontend)
