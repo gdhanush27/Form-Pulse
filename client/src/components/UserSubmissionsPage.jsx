@@ -56,10 +56,10 @@ const UserSubmissionsPage = () => {
         
         // Fetch submissions and stats
         const [submissionsRes, statsRes] = await Promise.all([
-          axios.get(API_URL + 'my-submissions', {
+          axios.get('https://harshanpvtserver.duckdns.org/form-pulse/my-submissions', {
             headers: { Authorization: `Bearer ${token}` }
           }),
-          axios.get(API_URL + 'my-submissions/stats', {
+          axios.get('https://harshanpvtserver.duckdns.org/form-pulse/my-submissions/stats', {
             headers: { Authorization: `Bearer ${token}` }
           })
         ]);
@@ -68,7 +68,7 @@ const UserSubmissionsPage = () => {
         const processedSubmissions = await Promise.all(
           submissionsRes.data.map(async (sub) => {
             try {
-              const formRes = await axios.get(API_URL + `form/${sub.form_name}`, {
+              const formRes = await axios.get(`https://harshanpvtserver.duckdns.org/form-pulse/form/${sub.form_name}`, {
                 headers: { Authorization: `Bearer ${token}` }
               });
               return {

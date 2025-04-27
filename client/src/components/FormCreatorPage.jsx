@@ -142,6 +142,8 @@ const FormCreatorPage = () => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('form_name', formName);
+    formData.append('protected', useProtected);  // Add as form data
+    formData.append('show_answers', showAnswers);  // Add as form data
 
     try {
       setIsPdfLoading(true);
@@ -149,16 +151,12 @@ const FormCreatorPage = () => {
       const token = await user.getIdToken();
       
       const response = await axios.post(
-        API_URL+'generate-quiz',
+        'https://harshanpvtserver.duckdns.org/form-pulse/generate-quiz',
         formData,
         {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
-          },
-          params: {
-            protected: useProtected,
-            show_answers: showAnswers
           }
         }
       );
@@ -231,7 +229,7 @@ const FormCreatorPage = () => {
       };
   
       const response = await axios.post(
-        API_URL+'create-form', 
+        'https://harshanpvtserver.duckdns.org/form-pulse/create-form', 
         { 
           form_name: formName, 
           ...formData 

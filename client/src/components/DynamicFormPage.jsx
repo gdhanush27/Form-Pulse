@@ -92,7 +92,7 @@ const DynamicFormPage = () => {
         setError('');
         
         const token = await user.getIdToken();
-        const response = await axios.get(API_URL+`form/${form_name}`, {
+        const response = await axios.get(`https://harshanpvtserver.duckdns.org/form-pulse/form/${form_name}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -154,7 +154,7 @@ const DynamicFormPage = () => {
         }
       };
 
-      const response = await axios.post(API_URL+'submit', submissionData, {
+      const response = await axios.post('https://harshanpvtserver.duckdns.org/form-pulse/submit', submissionData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       

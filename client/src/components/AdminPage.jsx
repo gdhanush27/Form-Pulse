@@ -59,13 +59,13 @@ const AdminPage = () => {
         const token = await user.getIdToken();
         
         // Fetch forms
-        const formsResponse = await axios.get(API_URL + 'my-forms', {
+        const formsResponse = await axios.get( 'https://harshanpvtserver.duckdns.org/form-pulse/my-forms', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setForms(formsResponse.data.forms);
 
         // Fetch stats
-        const statsResponse = await axios.get(API_URL + 'admin-stats', {
+        const statsResponse = await axios.get('https://harshanpvtserver.duckdns.org/form-pulse/admin-stats', {
           headers: { Authorization: `Bearer ${token}` }
         });
         // console.log('Stats:', statsResponse.data);
@@ -110,7 +110,7 @@ const AdminPage = () => {
     try {
       const token = await user.getIdToken();
       const response = await axios.get(
-        `${API_URL}submissions/${formName}/export`,
+        `https://harshanpvtserver.duckdns.org/form-pulse/submissions/${formName}/export`,
         {
           headers: { Authorization: `Bearer ${token}` },
           responseType: 'blob'
@@ -139,7 +139,7 @@ const AdminPage = () => {
     try {
       const token = await user.getIdToken();
       await axios.delete(
-        `${API_URL}form/${formToDelete.form_name}`,
+        `https://harshanpvtserver.duckdns.org/form-pulse/form/${formToDelete.form_name}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
