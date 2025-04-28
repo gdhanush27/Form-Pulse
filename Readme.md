@@ -1,16 +1,17 @@
-
-# Form Pulse 📋✨
+# 📋✨ Form Pulse
 
 **Smart Form Builder with Real-Time Analytics**
 
-[![License: GNU](https://img.shields.io/badge/License-GNU-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html#license-text)
-[![Python 3.9+](https://img.shields.io/badge/Python-3.9+-green.svg)](https://www.python.org/)
-[![React 18+](https://img.shields.io/badge/React-18+-61DAFB.svg)](https://reactjs.org/)
+[![License: GNU](https://img.shields.io/badge/License-GNU-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html#license-text)  
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9+-green.svg)](https://www.python.org/)  
+[![React 18+](https://img.shields.io/badge/React-18+-61DAFB.svg)](https://reactjs.org/)  
 [![Docker](https://img.shields.io/badge/Docker-available-2496ED.svg)](https://hub.docker.com/r/gdhanush270/form-pulse-frontend)
 
 Form Pulse is a modern form-building platform that combines intuitive form creation with powerful analytics. Built for educators, researchers, and businesses needing smart data collection solutions.
 
-## Features 🚀
+---
+
+## 🚀 Features
 
 - **🎨 Dual Form Creation Modes**
   - GUI builder for MCQ forms (drag-and-drop coming soon)
@@ -28,7 +29,7 @@ Form Pulse is a modern form-building platform that combines intuitive form creat
   - Excel export with one click
 
 - **🔗 Smart Sharing**
-  - Copy form links with single click
+  - Copy form links with a single click
   - Responsive forms work on any device
   - Secure access controls
 
@@ -37,7 +38,9 @@ Form Pulse is a modern form-building platform that combines intuitive form creat
   - Google profile integration
   - Mobile-responsive interface
 
-## Installation ⚙️
+---
+
+## ⚙️ Installation
 
 ### Backend Setup (FastAPI)
 
@@ -49,7 +52,7 @@ cd Form-Pulse/server
 # Create virtual environment
 python -m venv venv
 source venv/bin/activate  # Linux/MacOS
-venv\Scripts\activate  # Windows
+venv\Scripts\activate     # Windows
 
 # Install dependencies
 pip install -r requirements.txt
@@ -70,16 +73,37 @@ npm install
 npm start
 ```
 
-### Docker Deployment 🐳
+---
+
+## 🐳 Docker Deployment
+
+### Frontend Deployment
 
 Frontend Docker image available on Docker Hub:
 
 ```bash
+# Pull frontend image
 docker pull gdhanush270/form-pulse-frontend:latest
-docker run -p 80:3000 gdhanush270/form-pulse-frontend
+
+# Run frontend container
+docker run -d -p 80:3000 gdhanush270/form-pulse-frontend
 ```
 
-## Usage Guide 🖥️
+### Backend Deployment
+
+Backend Docker image available on Docker Hub:
+
+```bash
+# Pull backend image
+docker pull gdhanush270/form-pulse-backend:latest
+
+# Run backend container
+docker run -d -p 8000:8000 --name form-pulse-backend-container gdhanush270/form-pulse-backend:latest
+```
+
+---
+
+## 🖥️ Usage Guide
 
 ### Creating Forms
 1. **GUI Mode**:
@@ -107,7 +131,9 @@ docker run -p 80:3000 gdhanush270/form-pulse-frontend
 - Track respondent performance
 - Copy shareable form links
 
-## API Reference 📚
+---
+
+## 📚 API Reference
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -118,7 +144,9 @@ docker run -p 80:3000 gdhanush270/form-pulse-frontend
 | `/my-forms` | GET | List user's forms |
 | `/my-submissions` | GET | List user's responses |
 
-## Tech Stack 🛠️
+---
+
+## 🛠️ Tech Stack
 
 **Backend**  
 - FastAPI (Python) - High-performance API framework
@@ -137,11 +165,11 @@ docker run -p 80:3000 gdhanush270/form-pulse-frontend
 
 ---
 
-## License 📄
+## 📄 License
 
 This project is licensed under the GNU GENERAL PUBLIC LICENSE - see [LICENSE](LICENSE) file for details.
 
 ---
 
 **Form Pulse** © 2025 - Crafted with ❤️ by Dhanush  
-[Report Bug](https://github.com/gdhanush27/Form-Pulse/issues) | [Request Feature](https://github.com/gdhanush27/Form-Pulse/issues) | [Docker Hub](https://hub.docker.com/r/gdhanush270/form-pulse-frontend)
+[Report Bug](https://github.com/gdhanush27/Form-Pulse/issues) | [Request Feature](https://github.com/gdhanush27/Form-Pulse/issues) | [Docker Hub (Frontend)](https://hub.docker.com/r/gdhanush270/form-pulse-frontend) | [Docker Hub (Backend)](https://hub.docker.com/r/gdhanush270/form-pulse-backend)
