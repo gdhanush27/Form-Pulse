@@ -75,32 +75,50 @@ npm start
 
 ---
 
-## 🐳 Docker Deployment
+## Docker Deployment 🐳
 
-### Frontend Deployment
+Frontend and Backend Docker images are available on Docker Hub. You can use the following `docker-compose.yml` file to deploy both services together:
 
-Frontend Docker image available on Docker Hub:
+```yaml
+services:
+  backend:
+    image: gdhanush270/form-pulse-backend:latest
+    ports:
+      - "8000:8000" # map backend's port 8000
+    restart: unless-stopped
 
-```bash
-# Pull frontend image
-docker pull gdhanush270/form-pulse-frontend:latest
-
-# Run frontend container
-docker run -d -p 80:3000 gdhanush270/form-pulse-frontend
+  frontend:
+    image: gdhanush270/form-pulse-frontend:latest
+    ports:
+      - "3000:3000" # map frontend's port 3000
+    restart: unless-stopped
+    depends_on:
+      - backend
 ```
 
-### Backend Deployment
+### Steps to Deploy
 
-Backend Docker image available on Docker Hub:
+1. Create a `docker-compose.yml` file in your project directory and paste the above configuration.
+2. Run the following commands to start the services:
 
-```bash
-# Pull backend image
-docker pull gdhanush270/form-pulse-backend:latest
+    ```bash
+    docker-compose up -d
+    ```
 
-# Run backend container
-docker run -d -p 8000:8000 --name form-pulse-backend-container gdhanush270/form-pulse-backend:latest
-```
+3. Access the application:
+   - **Frontend**: [http://localhost:3000](http://localhost:3000)
+   - **Backend**: [http://localhost:8000](http://localhost:8000)
 
+4. To stop the services, run:
+
+    ```bash
+    docker-compose down
+    ```
+5. To view logs, use:
+
+    ```bash
+    docker-compose logs -f
+    ```
 ---
 
 ## 🖥️ Usage Guide
