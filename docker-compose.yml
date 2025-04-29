@@ -1,0 +1,14 @@
+services:
+  backend:
+    image: gdhanush270/form-pulse-backend:latest
+    ports:
+      - "8000:8000" # map backend's port 8000
+    restart: unless-stopped
+
+  frontend:
+    image: gdhanush270/form-pulse-frontend:latest
+    ports:
+      - "3000:3000" # map frontend's port 3000
+    restart: unless-stopped
+    depends_on:
+      - backend
